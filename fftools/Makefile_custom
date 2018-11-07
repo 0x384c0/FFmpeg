@@ -1,0 +1,44 @@
+CC=clang
+
+.ONESHELL:
+all:
+	$(MAKE) clean
+	$(MAKE) config
+	$(MAKE) build
+	$(MAKE) test
+
+config:
+	cd ../ && ./configure --cc=$(CC) --enable-gpl --enable-libx264  --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter
+
+build:
+	$(CC) -w -o ffpatched ffplay.c cmdutils.c -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ -lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs`
+
+build_and_debug:
+	$(CC) -g -w -o ffpatched ffplay.c cmdutils.c -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ -lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs`
+	lldb -o run ./ffpatched ~/Movies/test.mp4
+
+test:
+	./ffpatched ~/Movies/test.mp4
+
+
+clean:
+	git clean -fdx
+
+
+# win scripts untested TODO: make it work
+config_win_32:
+	./configure  --arch=x86 --target-os=mingw32 --cross-prefix=i686-w64-mingw32- --pkg-config=pkg-config --enable-gpl --disable-ffmpeg --disable-ffprobe --disable-ffserver #--enable-libx264 --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter
+
+build_win_32:
+	$(CC) -o ffpatched ffplay.c cmdutils.c -I.  -ISDL2-2.0.6/include -I/usr/local/Cellar/mingw-w64/5.0.2_3/toolchain-i686/i686-w64-mingw32/include         -l/usr/local/Cellar/mingw-w64/5.0.2_3/toolchain-i686/i686-w64-mingw32/lib
+
+
+
+config_win_64:
+	./configure  --arch=x86 --target-os=mingw64 --cross-prefix=x86_64-w64-mingw32- --pkg-config=pkg-config --enable-gpl --disable-ffmpeg --disable-ffprobe --disable-ffserver #--enable-libx264 --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter
+
+build_win_64:
+	$(CC) -o ffpatched ffplay.c cmdutils.c -I.  -ISDL2-2.0.6/include -I/usr/local/Cellar/mingw-w64/5.0.2_3/toolchain-x86_64/x86_64-w64-mingw32/include -l/usr/local/Cellar/mingw-w64/5.0.2_3/toolchain-x86_64/x86_64-w64-mingw32/lib
+
+build_libs:
+	make -f Makefile.backup
