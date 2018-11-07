@@ -56,3 +56,8 @@
 /libavfilter/vulkan/*.c
 /.*/
 !/.forgejo/
+
+.DS_Store
+*.dSYM
+fftools/ffpatched
+*.log
