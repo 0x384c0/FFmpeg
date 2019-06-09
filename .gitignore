@@ -42,3 +42,5 @@
 *.dSYM
 fftools/ffpatched
 *.log
+*.vscode
+fftools/ffpatched*
