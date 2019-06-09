@@ -1,4 +1,4 @@
-	#include <stdio.h>
+#include <stdio.h>
 #include "libavutil/frame.h"
 
 #define MAX_LUMA 255
@@ -8,6 +8,8 @@
 #define LUMA_HISTORY 30.0 // in frames
 
 //private
+typedef unsigned int uint;
+
 uint
 prevFrameAverageLuma = MAX_LUMA,
 luma_modifyer = 0;
