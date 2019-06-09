@@ -39,5 +39,6 @@
 
 .DS_Store
 *.dSYM
-fftools/ffpatched
+*.vscode
 *.log
+fftools/ffpatched*
