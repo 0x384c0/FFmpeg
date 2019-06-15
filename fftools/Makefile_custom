@@ -42,6 +42,7 @@ win_64_all:
 	$(MAKE) win_64_check_dependencies
 	$(MAKE) win_64_config
 	$(MAKE) win_64_build
+	$(MAKE) win_64_test
 
 win_64_check_dependencies:
 	printf "\nChecking dependencies...\n" && \
@@ -57,8 +58,12 @@ win_64_config:
 win_64_build:
 	$(CROSS_PREFIX)objdump  -p ffpatched.exe | grep 'DLL Name:' | sed -e "s/\t*DLL Name: //g"
 	set -e
-	$(WIN_64_CC) -o ffpatched ffplay.c cmdutils.c -I. -I../ -I$(WIN_64_SDL_DIR)/include/SDL2 -L$(WIN_64_SDL_DIR)/lib  -I$(WIN_64_FFMPEG_DIR)/include -L$(WIN_64_FFMPEG_DIR)/lib -I$(WIN_64_MINGW_DIR)/include -L$(WIN_64_MINGW_DIR)/lib      -lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale -lmingw32 -lSDL2main -lSDL2
+	$(WIN_64_CC) -w -o ffpatched ffplay.c cmdutils.c -I. -I../ -I$(WIN_64_SDL_DIR)/include/SDL2 -L$(WIN_64_SDL_DIR)/lib  -I$(WIN_64_FFMPEG_DIR)/include -L$(WIN_64_FFMPEG_DIR)/lib -I$(WIN_64_MINGW_DIR)/include -L$(WIN_64_MINGW_DIR)/lib      -lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale -lmingw32 -lSDL2main -lSDL2
 	mkdir -p $(WIN_64_OUT_DIR)
 	mv -f ffpatched.exe $(WIN_64_OUT_DIR)
 	find $(WIN_64_FFMPEG_SHARED_DIR) -name "*.dll" -exec cp -n {} $(WIN_64_OUT_DIR) \;
 	find $(WIN_64_SDL_DIR) -name "*.dll" -exec cp -n {} $(WIN_64_OUT_DIR) \;
+
+
+win_64_test:
+	$(WIN_64_OUT_DIR)/ffpatched -i /d/Videos/RA3_3.avi

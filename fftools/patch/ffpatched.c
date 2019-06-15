@@ -134,5 +134,7 @@ static void ffpatched_handleSDLKeyEvent(Uint8 sdlKey){
 	}
 }
 static void ffpatched_handleExit(){
+	IS_VIDEO_NORMALIZER_ENABLED = 0;
 	IS_AUDIO_COMPRESS_ENABLED = 0;
+	IS_BITRATE_BAR_ENABLED = 0;
 }
