@@ -1,7 +1,7 @@
 #include "libavutil/frame.h"
 #include "libavformat/avformat.h"
 
-#include "audio_compressor/compress.c"
+#include "AudioCompress/compress.h"
 #include "video_normalizer/normalize.c"
 #include "bitrate_bar/bitrate_bar.c"
 
@@ -13,7 +13,7 @@ IS_BITRATE_BAR_ENABLED = 1;
 //private
 static int
 DURATION_IS_KNOWN = 0,
-DRAW_FRAME_IN_CONSOLE = 0,
+LOG_VIDEO_FRAME_CONTENT = 0,
 LOG_VIDEO_FRAME = 0,
 LOG_AUDIO_FRAME = 0;
 
@@ -72,10 +72,13 @@ static void logAudioFrame(Uint8 *stream, int len){
 	len_i = len;
 }
 
-//public
+//utils
+struct Compressor *compressor;
 
-static void ffpatched_print_usage(){
-	av_log(NULL, AV_LOG_WARNING,"Usage: n - audio compressor, h - video normalizer, b - bitrate bar\n");	
+//public
+static void ffpatched_init(){
+	av_log(NULL, AV_LOG_WARNING,"Usage: n - audio compressor, h - video normalizer, b - bitrate bar\n");
+	compressor = Compressor_new(0);
 }
 static int ffpatched_handleRead(AVStream *st,AVFormatContext *ic,AVPacket *pkt,int st_index[]){
 	DURATION_IS_KNOWN = st->duration > 0.1 || st->nb_index_entries > 0;
@@ -88,7 +91,7 @@ static int ffpatched_handleRead(AVStream *st,AVFormatContext *ic,AVPacket *pkt,i
 }
 
 static void ffpatched_processVideoFrame(Frame *frame,VideoState *video_state){
-	if (DRAW_FRAME_IN_CONSOLE)
+	if (LOG_VIDEO_FRAME_CONTENT)
 		drawInAvFrameYUV(frame->frame,10,10,35,35);
 	if (LOG_VIDEO_FRAME)
 		logVideoFrame(frame);
@@ -106,7 +109,7 @@ static void ffpatched_processAudioFrame(VideoState *is, int len){
 
 	// Compressor_reset();
 	if (!is->paused && !is->muted && is->audio_buf && IS_AUDIO_COMPRESS_ENABLED)
-		Compressor_Process_int16(NULL,stream,len/2);
+		Compressor_Process_int16(compressor, stream, len/2);
 }
 static void ffpatched_handleSDLKeyEvent(Uint8 sdlKey){
 	switch (sdlKey) {
@@ -137,4 +140,5 @@ static void ffpatched_handleExit(){
 	IS_VIDEO_NORMALIZER_ENABLED = 0;
 	IS_AUDIO_COMPRESS_ENABLED = 0;
 	IS_BITRATE_BAR_ENABLED = 0;
+	Compressor_delete(compressor);
 }
