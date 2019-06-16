@@ -9,8 +9,8 @@
 #define REGIONS_H 9
 
 #define MAX_LUMA 255 // int8 value
-#define MAX_LUMA_MODIFYER 255 * 0.3 // int8 value
-#define AVEARGE_LUMA_MIN 255 * 0.2 // int8 value, luma adjust treshold
+#define MAX_LUMA_MODIFYER 255 * 0.2 // int8 value
+#define AVEARGE_LUMA_MIN 255 * 0.1 // int8 value, luma adjust treshold
 #define LUMA_HISTORY 30.0 // frames
 
 struct FrameRegionLumaInfo {
