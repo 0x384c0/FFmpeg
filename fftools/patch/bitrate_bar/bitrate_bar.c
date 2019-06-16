@@ -125,22 +125,22 @@ static int BitRateBar_generate(AVStream *av_stream,AVFormatContext *ic,AVPacket 
 	int fuck_id=0;
 	memset(bitrate_bar_data,0,BITBAR_DATA_SIZE * sizeof(int));
 
-	printf("\n st_index: ");
-	print_array_int(st_index,ARRAY_SIZE(st_index));
-	printf("\n AVMEDIA_TYPE_VIDEO: %d \n",AVMEDIA_TYPE_VIDEO);
-	printf("st_index[AVMEDIA_TYPE_VIDEO]: %d \n",st_index[AVMEDIA_TYPE_VIDEO]);
+	// printf("\n st_index: ");
+	// print_array_int(st_index,ARRAY_SIZE(st_index));
+	// printf("\n AVMEDIA_TYPE_VIDEO: %d \n",AVMEDIA_TYPE_VIDEO);
+	// printf("st_index[AVMEDIA_TYPE_VIDEO]: %d \n",st_index[AVMEDIA_TYPE_VIDEO]);
 
 	fuck_id=st_index[AVMEDIA_TYPE_VIDEO];
 
 	AVCodecContext *fuck_avctx=av_stream->codec;
-	printf("Butrate bar! Width: %d, id=%d\n",fuck_avctx->width,fuck_id);
+	// printf("Butrate bar! Width: %d, id=%d\n",fuck_avctx->width,fuck_id);
 	ret = avformat_seek_file(ic, -1, INT64_MIN, 0, INT64_MAX, 0);
 
 
 	if(av_stream->nb_index_entries>0/*10000*/){
 	// if(0){
 		// fast index reading available!
-		printf("We have index with %d entries\n",av_stream->nb_index_entries);
+		// printf("We have index with %d entries\n",av_stream->nb_index_entries);
 		int q;
 		int64_t prev=0;
 		for(q=0; q<av_stream->nb_index_entries; q++){
