@@ -11,7 +11,7 @@ config:
 	cd ../ && ./configure --cc=$(CC) --enable-gpl --enable-libx264  --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter
 
 build:
-	$(CC) -w -o ffpatched ffplay.c cmdutils.c -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ -lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs`
+	$(CC) -w -O3 -o ffpatched ffplay.c cmdutils.c -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ -lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs`
 
 build_and_debug:
 	$(CC) -g -w -o ffpatched ffplay.c cmdutils.c -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ -lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs`
@@ -58,7 +58,7 @@ win_64_config:
 win_64_build:
 	$(CROSS_PREFIX)objdump  -p ffpatched.exe | grep 'DLL Name:' | sed -e "s/\t*DLL Name: //g"
 	set -e
-	$(WIN_64_CC) -w -o ffpatched ffplay.c cmdutils.c -I. -I../ -I$(WIN_64_SDL_DIR)/include/SDL2 -L$(WIN_64_SDL_DIR)/lib  -I$(WIN_64_FFMPEG_DIR)/include -L$(WIN_64_FFMPEG_DIR)/lib -I$(WIN_64_MINGW_DIR)/include -L$(WIN_64_MINGW_DIR)/lib      -lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale -lmingw32 -lSDL2main -lSDL2
+	$(WIN_64_CC) -w -O3 -o ffpatched ffplay.c cmdutils.c -I. -I../ -I$(WIN_64_SDL_DIR)/include/SDL2 -L$(WIN_64_SDL_DIR)/lib  -I$(WIN_64_FFMPEG_DIR)/include -L$(WIN_64_FFMPEG_DIR)/lib -I$(WIN_64_MINGW_DIR)/include -L$(WIN_64_MINGW_DIR)/lib      -lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale -lmingw32 -lSDL2main -lSDL2
 	mkdir -p $(WIN_64_OUT_DIR)
 	mv -f ffpatched.exe $(WIN_64_OUT_DIR)
 	find $(WIN_64_FFMPEG_SHARED_DIR) -name "*.dll" -exec cp -n {} $(WIN_64_OUT_DIR) \;
