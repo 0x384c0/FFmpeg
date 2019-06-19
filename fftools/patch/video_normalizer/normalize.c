@@ -4,7 +4,7 @@
 
 #define INTERPOLATE
 
-#define CHANNEL_ID 0
+#define NORMALIZE_CHANNEL_ID 0
 #define REGIONS_W 16
 #define REGIONS_H 9
 
@@ -136,12 +136,12 @@ static void Normalizer_processFrame(Frame *vp){
 				for (int frameW = 0; frameW < regionW; frameW++){
 					for (int frameH = 0; frameH < regionH; frameH++){
 						int pixel = (offsetW + frameW) + ((offsetH + frameH) * avFrame.width);
-						totalLuma += avFrame.data[CHANNEL_ID][pixel];
-						avFrame.data[CHANNEL_ID][pixel] = get_new_luma(
+						totalLuma += avFrame.data[NORMALIZE_CHANNEL_ID][pixel];
+						avFrame.data[NORMALIZE_CHANNEL_ID][pixel] = get_new_luma(
 							surroundingLuma,
 							frameW/(float)regionW,
 							frameH/(float)regionH,
-							avFrame.data[CHANNEL_ID][pixel]
+							avFrame.data[NORMALIZE_CHANNEL_ID][pixel]
 						);
 					}
 				}
@@ -149,7 +149,7 @@ static void Normalizer_processFrame(Frame *vp){
 				for (int frameW = 0; frameW < regionW; frameW++){
 					for (int frameH = 0; frameH < regionH; frameH++){
 						int pixel = (offsetW + frameW) + ((offsetH + frameH) * avFrame.width);
-						totalLuma += avFrame.data[CHANNEL_ID][pixel];
+						totalLuma += avFrame.data[NORMALIZE_CHANNEL_ID][pixel];
 					}
 				}
 			}
