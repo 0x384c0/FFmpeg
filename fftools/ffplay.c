@@ -309,7 +309,7 @@ typedef struct VideoState {
 
 //ffpatched defenitions
 static double get_master_clock(VideoState *is);
-#include "patch/ffpatched.c"
+#include "patch/ffpatched.c" //TODO: create and use headers
 
 /* options specified by the user */
 static AVInputFormat *file_iformat;

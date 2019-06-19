@@ -2,8 +2,14 @@
 #include "libavformat/avformat.h"
 
 #include "AudioCompress/compress.h"
-#include "video_normalizer/normalize.c"
-#include "bitrate_bar/bitrate_bar.c"
+#include "video_normalizer/normalize.c" //TODO: create and use headers
+#include "bitrate_bar/bitrate_bar.c" //TODO: create and use headers
+
+// #define LOG_VIDEO_FRAME_CONTENT
+// #define LOG_VIDEO_FRAME
+// #define LOG_AUDIO_FRAME
+
+#define COPIED_FRAMES_BUF_SIZE 5
 
 static int
 IS_VIDEO_NORMALIZER_ENABLED = 1,
@@ -12,10 +18,7 @@ IS_BITRATE_BAR_ENABLED = 1;
 
 //private
 static int
-DURATION_IS_KNOWN = 0,
-LOG_VIDEO_FRAME_CONTENT = 0,
-LOG_VIDEO_FRAME = 0,
-LOG_AUDIO_FRAME = 0;
+DURATION_IS_KNOWN = 0;
 
 static void drawInAvFrameYUV(AVFrame *avFrame,int x, int y, int w, int h){
 	// printf("format %s\n",av_get_pix_fmt_name(avFrame->format ));
@@ -72,6 +75,28 @@ static void logAudioFrame(Uint8 *stream, int len){
 	len_i = len;
 }
 
+//frame backup
+intptr_t copiedFrames[COPIED_FRAMES_BUF_SIZE] = { 0 };
+int currentFrameId = 0;
+static void copyFrameData(AVFrame *avFrame){
+
+	int dataSize = avFrame->linesize[NORMALIZE_CHANNEL_ID] * avFrame->height;
+
+	if (dataSize == 0)
+		return;
+
+	if (copiedFrames[currentFrameId] == 0)
+		copiedFrames[currentFrameId] = malloc(dataSize);
+
+
+	memcpy(copiedFrames[currentFrameId],avFrame->data[NORMALIZE_CHANNEL_ID],dataSize);
+	avFrame->data[NORMALIZE_CHANNEL_ID] = copiedFrames[currentFrameId];
+
+	currentFrameId ++;
+	if (currentFrameId >= COPIED_FRAMES_BUF_SIZE)
+		currentFrameId = 0;
+}
+
 //utils
 struct Compressor *compressor;
 
@@ -91,21 +116,30 @@ static int ffpatched_handleRead(AVStream *st,AVFormatContext *ic,AVPacket *pkt,i
 }
 
 static void ffpatched_processVideoFrame(Frame *frame,VideoState *video_state){
-	if (LOG_VIDEO_FRAME_CONTENT)
+	if (IS_VIDEO_NORMALIZER_ENABLED || (IS_BITRATE_BAR_ENABLED && DURATION_IS_KNOWN))
+		copyFrameData(frame->frame);
+	#ifdef LOG_VIDEO_FRAME_CONTENT
 		drawInAvFrameYUV(frame->frame,10,10,35,35);
-	if (LOG_VIDEO_FRAME)
+	#endif
+	#ifdef LOG_VIDEO_FRAME
 		logVideoFrame(frame);
+	#endif
 	if (IS_VIDEO_NORMALIZER_ENABLED)
 		Normalizer_processFrame(frame);
 	if (IS_BITRATE_BAR_ENABLED && DURATION_IS_KNOWN)
 		BitRateBar_insert(frame,video_state);
-	
 }
+static void ffpatched_restoreLastVideoFrame(AVFrame *frame){
+	restoreFrame(frame);
+}
+
+
 static void ffpatched_processAudioFrame(VideoState *is, int len){
 	uint8_t *stream = (uint8_t *)is->audio_buf + is->audio_buf_index;
 
-	if (LOG_AUDIO_FRAME)
+	#ifdef LOG_AUDIO_FRAME
 		logAudioFrame(stream,len);
+	#endif
 
 	// Compressor_reset();
 	if (!is->paused && !is->muted && is->audio_buf && IS_AUDIO_COMPRESS_ENABLED)
