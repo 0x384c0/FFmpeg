@@ -90,7 +90,8 @@ static void insert_pointer_over_bar(Frame *frame,VideoState *video_state){
 	if (isnan(master_clock)) { return; }
 
 	int
-	position = (double) frame_width * (master_clock / duration) - BAR_POINTER_WIDTH/2;
+	position = (double) frame_width * (master_clock / duration) - BAR_POINTER_WIDTH/2,
+	dataSize = frame->frame->width * frame->frame->height;
 	// printf("\nmaster_clock: %f \t\t of duration: %f\n", master_clock, duration);
 	// printf("position: %d \t\t of width: %d\n", position, aligned_linesize);
 	// printf("linesize[0]: %d, width: %d  \n", frame->frame->linesize[0], frame->frame->width); // linesize might be greater, then width, should calculate aligmnent
@@ -105,7 +106,9 @@ static void insert_pointer_over_bar(Frame *frame,VideoState *video_state){
 			if (width >= ((double) BAR_POINTER_WIDTH)/3 && width < ((double)BAR_POINTER_WIDTH) * 2.0 / 3.0 ){
 				color = 0;
 			}
-			frame->frame->data[0][position + width + height * (aligned_linesize) ] = color;//draw vertical line
+			int pointerPixel = position + width + height * (aligned_linesize);
+			if (pointerPixel > 0 && pointerPixel < dataSize)
+				frame->frame->data[0][pointerPixel] = color;//draw vertical line
 		}
 	}
 }
