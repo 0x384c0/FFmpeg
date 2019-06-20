@@ -105,6 +105,7 @@ static void Normalizer_processFrame(Frame *vp){
 	AVFrame avFrame = *vp->frame;
 
 	int
+	alignedLinesize = avFrame.linesize[NORMALIZE_CHANNEL_ID],
 	regionW = round((float) avFrame.width / REGIONS_W),
 	regionH = round((float) avFrame.height / REGIONS_H);
 
@@ -135,7 +136,7 @@ static void Normalizer_processFrame(Frame *vp){
 
 				for (int frameW = 0; frameW < regionW; frameW++){
 					for (int frameH = 0; frameH < regionH; frameH++){
-						int pixel = (offsetW + frameW) + ((offsetH + frameH) * avFrame.width);
+						int pixel = (offsetW + frameW) + ((offsetH + frameH) * alignedLinesize);
 						totalLuma += avFrame.data[NORMALIZE_CHANNEL_ID][pixel];
 						avFrame.data[NORMALIZE_CHANNEL_ID][pixel] = get_new_luma(
 							surroundingLuma,
@@ -148,7 +149,7 @@ static void Normalizer_processFrame(Frame *vp){
 			} else {//only calculate current total luma
 				for (int frameW = 0; frameW < regionW; frameW++){
 					for (int frameH = 0; frameH < regionH; frameH++){
-						int pixel = (offsetW + frameW) + ((offsetH + frameH) * avFrame.width);
+						int pixel = (offsetW + frameW) + ((offsetH + frameH) * alignedLinesize);
 						totalLuma += avFrame.data[NORMALIZE_CHANNEL_ID][pixel];
 					}
 				}
