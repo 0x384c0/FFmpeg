@@ -3,10 +3,18 @@ Clone
 
 Build
 * install sdl2
-* install ffmpeg 3.4
+* install ffmpeg <version>
 * cd fftools/
 * make config 
 * make build test
+
+Build win64
+* install x86_64-w64-mingw32
+* download ffmpeg-<version>-win64-dev ffmpeg-<version>-win64-shared SDL2-<version>
+* cd fftools/
+* make win_64_check_dependencies
+* make win_64_config
+* make win_64_build
 
 Usage
 * b - toggle bitrate bar
@@ -14,7 +22,7 @@ Usage
 * h - toggle video normalizer
 
 ![Alt text](screenshots/screenshot_video_normalizer.jpg?raw=true "video_normalizer")
-![Alt text](screenshots/screenshot.jpg?raw=true "screenshot")
+![Alt text](screenshots/screenshot.jpg?raw=true "bitrate_bar")
 
 
 ### REQUIRED FILES:
