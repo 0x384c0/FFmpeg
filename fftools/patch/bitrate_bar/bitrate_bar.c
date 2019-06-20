@@ -46,8 +46,8 @@ static void generate_bar_image(Frame *frame){
 
 		if(bitrate_bar_image){free(bitrate_bar_image);}
 
-		frame_width = frame->width;
 		aligned_linesize = frame->frame->linesize[0];
+		frame_width = frame->width;
 		bitrate_bar_image = malloc(aligned_linesize * BAR_HEIGH);
 
 		int max = 0;
@@ -66,7 +66,7 @@ static void generate_bar_image(Frame *frame){
 		}
 
 		for(q = 0; q < BITBAR_DATA_SIZE; q++){
-			i = q * frame->width / BITBAR_DATA_SIZE;
+			i = q * frame_width / BITBAR_DATA_SIZE;
 			for(w=0;w<BAR_HEIGH;w++){
 				if (max){
 					bitrate_bar_image[i + w * aligned_linesize] = bitrate_bar_data[q] * 255 / max;
