@@ -2,6 +2,7 @@
 #include "libavformat/avformat.h"
 
 #include "AudioCompress/compress.h"
+#include "osd/osd.h"
 #include "video_normalizer/normalize.c" //TODO: create and use headers
 #include "bitrate_bar/bitrate_bar.c" //TODO: create and use headers
 
@@ -9,6 +10,8 @@
 // #define LOG_VIDEO_FRAME
 // #define LOG_AUDIO_FRAME
 
+#define BITBAR_HEIGHT 30
+#define OSD_INSET BITBAR_HEIGHT / 2 + 1
 #define COPIED_FRAMES_BUF_SIZE 5
 
 static int
@@ -99,6 +102,7 @@ static void copyFrameData(AVFrame *avFrame){
 
 //utils
 struct Compressor *compressor;
+struct Osd *osd;
 
 //public
 static void ffpatched_init(){
@@ -108,7 +112,8 @@ static void ffpatched_init(){
 static int ffpatched_handleRead(AVStream *st,AVFormatContext *ic,AVPacket *pkt,int st_index[]){
 	DURATION_IS_KNOWN = st->duration > 0.1 || st->nb_index_entries > 0;
 	if (DURATION_IS_KNOWN){
-		int ret = BitRateBar_generate(st,ic,pkt,st_index);
+		osd = OSD_new(ic,BITBAR_HEIGHT + OSD_INSET,OSD_INSET);
+		int ret = BitRateBar_generate(st,ic,pkt,st_index,BITBAR_HEIGHT);
 		return ret;
 	} else {
 		return 0;
@@ -126,8 +131,10 @@ static void ffpatched_processVideoFrame(Frame *frame,VideoState *video_state){
 	#endif
 	if (IS_VIDEO_NORMALIZER_ENABLED)
 		Normalizer_processFrame(frame);
-	if (IS_BITRATE_BAR_ENABLED && DURATION_IS_KNOWN)
+	if (IS_BITRATE_BAR_ENABLED && DURATION_IS_KNOWN){
 		BitRateBar_insert(frame,video_state);
+		OSD_processFrame(osd, video_state->audio_clock, frame->frame);
+	}
 }
 static void ffpatched_restoreLastVideoFrame(AVFrame *frame){
 	restoreFrame(frame);
@@ -175,4 +182,5 @@ static void ffpatched_handleExit(){
 	IS_AUDIO_COMPRESS_ENABLED = 0;
 	IS_BITRATE_BAR_ENABLED = 0;
 	Compressor_delete(compressor);
+	OSD_delete(osd);
 }
