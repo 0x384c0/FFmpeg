@@ -3,7 +3,7 @@
 
 #include "AudioCompress/compress.h"
 #include "osd/osd.h"
-#include "video_normalizer/normalize.c" //TODO: create and use headers
+#include "video_normalizer/normalize.h"
 #include "bitrate_bar/bitrate_bar.c" //TODO: create and use headers
 
 // #define LOG_VIDEO_FRAME_CONTENT
@@ -103,11 +103,13 @@ static void copyFrameData(AVFrame *avFrame){
 //utils
 struct Compressor *compressor;
 struct Osd *osd;
+struct Normalizer *normalizer;
 
 //public
 static void ffpatched_init(){
 	av_log(NULL, AV_LOG_WARNING,"Usage: n - audio compressor, h - video normalizer, b - bitrate bar\n");
 	compressor = Compressor_new(0);
+	normalizer = Normalizer_new();
 }
 static int ffpatched_handleRead(AVStream *st,AVFormatContext *ic,AVPacket *pkt,int st_index[]){
 	DURATION_IS_KNOWN = st->duration > 0.1 || st->nb_index_entries > 0;
@@ -130,7 +132,7 @@ static void ffpatched_processVideoFrame(Frame *frame,VideoState *video_state){
 		logVideoFrame(frame);
 	#endif
 	if (IS_VIDEO_NORMALIZER_ENABLED)
-		Normalizer_processFrame(frame);
+		Normalizer_processFrame(normalizer,frame->frame);
 	if (IS_BITRATE_BAR_ENABLED && DURATION_IS_KNOWN){
 		BitRateBar_insert(frame,video_state);
 		OSD_processFrame(osd, video_state->audio_clock, frame->frame);
@@ -182,5 +184,6 @@ static void ffpatched_handleExit(){
 	IS_AUDIO_COMPRESS_ENABLED = 0;
 	IS_BITRATE_BAR_ENABLED = 0;
 	Compressor_delete(compressor);
+	Normalizer_delete(normalizer);
 	OSD_delete(osd);
 }
