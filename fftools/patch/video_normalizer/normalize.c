@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <math.h>
-#include "libavutil/frame.h"
+
+#include "normalize.h"
 
 #define INTERPOLATE
 
-#define NORMALIZE_CHANNEL_ID 0
 #define REGIONS_W 16
 #define REGIONS_H 9
 
@@ -33,12 +33,13 @@ struct SurroundingLuma{
 	center
 };
 
-//instance data
-struct FrameRegionInfo totalFrameInfo = { MAX_LUMA, 0, 0,0,0,0 };
-struct FrameRegionInfo frameInfo[REGIONS_W][REGIONS_H] = { MAX_LUMA, 0, 0,0,0,0 };
+struct Normalizer{
+	struct FrameRegionInfo totalFrameInfo;
+	struct FrameRegionInfo frameInfo[REGIONS_W][REGIONS_H];
+};
 
 
-static int clamp(int x,int minVal,int maxVal){
+int clamp(int x,int minVal,int maxVal){
 	if (x < minVal)
 		return minVal;
 	if (x > maxVal)
@@ -47,21 +48,21 @@ static int clamp(int x,int minVal,int maxVal){
 }
 
 //interpolate
-static int interpolate_linear(int a,int b,int c,int d,float x,float y){//f(0,0) f(1,0) f(0,1) f(1,1)
+int interpolate_linear(int a,int b,int c,int d,float x,float y){//f(0,0) f(1,0) f(0,1) f(1,1)
 	return (a-b-c+d)*x*y+(b-a)*x+(c-a)*y+a;
 }
 
 //range compression
-static int compress(int x,int min){
+int compress(int x,int min){
 	return x - x * min/MAX_LUMA + min;
 }
 #define INTERSECT_X 81 //x of intersection between compress and gain functions
-static int gain(int x,int min){
+int gain(int x,int min){
 	return ((float)(x*min))/120.0 + x;
 }
 
 //smooth luma adjusting
-static void change_lumaModifyer(struct FrameRegionInfo *frameRegionInfo, int activationTreshold, int maxValue, int historyLen){
+void change_lumaModifyer(struct FrameRegionInfo *frameRegionInfo, int activationTreshold, int maxValue, int historyLen){
 	int new_lumaModifyer = 0;
 	if (frameRegionInfo->prevFrameAverageLuma < activationTreshold)
 		new_lumaModifyer = frameRegionInfo->lumaModifyer + maxValue / historyLen;
@@ -71,7 +72,7 @@ static void change_lumaModifyer(struct FrameRegionInfo *frameRegionInfo, int act
 }
 
 //adjust luma (0-255) for single pixel
-static int get_new_luma(struct SurroundingLuma surroundingLuma, float x, float y, int current_luma){
+int get_new_luma(struct FrameRegionInfo totalFrameInfo, struct SurroundingLuma surroundingLuma, float x, float y, int current_luma){
 	//get luma modifyer for pixel
 	#ifdef INTERPOLATE
 		int lumaModifyer = interpolate_linear(
@@ -105,12 +106,25 @@ static int get_new_luma(struct SurroundingLuma surroundingLuma, float x, float y
 }
 
 //public
-static void Normalizer_processFrame(Frame *vp){
-	AVFrame avFrame = *vp->frame;
+struct Normalizer *Normalizer_new(){
+	struct Normalizer *normalizer = calloc(1,sizeof(struct Normalizer));
+	struct FrameRegionInfo defaultTotalFrameInfo = { MAX_LUMA, 0, 0,0,0,0 };
+	struct FrameRegionInfo defaultframeInfo[REGIONS_W][REGIONS_H] = { MAX_LUMA, 0, 0,0,0,0 };
+	normalizer->totalFrameInfo = defaultTotalFrameInfo;
+	memcpy(&normalizer->frameInfo, &defaultframeInfo, sizeof(defaultframeInfo));
+	return normalizer;
+}
+
+void Normalizer_delete(struct Normalizer *normalizer){
+	free(normalizer);
+}
+
+void Normalizer_processFrame(struct Normalizer *normalizer, AVFrame *avFrameP){
+	struct AVFrame avFrame = *avFrameP;
 	int alignedLinesize = avFrame.linesize[NORMALIZE_CHANNEL_ID];
 
 	//calculate region bounds for every region if nedded
-	if (frameInfo[0][0].w == 0){
+	if (normalizer->frameInfo[0][0].w == 0){
 		int
 		regionW = ceil((float) avFrame.width / REGIONS_W),
 		regionH = ceil((float) avFrame.height / REGIONS_H),
@@ -119,23 +133,23 @@ static void Normalizer_processFrame(Frame *vp){
 
 		for (int regionWId = 0; regionWId < REGIONS_W; regionWId++){
 			for (int regionHId = 0; regionHId < REGIONS_H; regionHId++){
-				frameInfo[regionWId][regionHId].offsetW = regionW * regionWId;
+				normalizer->frameInfo[regionWId][regionHId].offsetW = regionW * regionWId;
 				if (regionsWFitted || regionWId < REGIONS_W - 1)
-					frameInfo[regionWId][regionHId].w = regionW;
+					normalizer->frameInfo[regionWId][regionHId].w = regionW;
 				else
-					frameInfo[regionWId][regionHId].w = regionW - (regionW - (avFrame.width - frameInfo[regionWId][regionHId].offsetW));
+					normalizer->frameInfo[regionWId][regionHId].w = regionW - (regionW - (avFrame.width - normalizer->frameInfo[regionWId][regionHId].offsetW));
 
-				frameInfo[regionWId][regionHId].offsetH = regionH * regionHId;
+				normalizer->frameInfo[regionWId][regionHId].offsetH = regionH * regionHId;
 				if (regionsHFitted || regionHId < REGIONS_H - 1)
-					frameInfo[regionWId][regionHId].h = regionH;
+					normalizer->frameInfo[regionWId][regionHId].h = regionH;
 				else
-					frameInfo[regionWId][regionHId].h = regionH - (regionH - (avFrame.height - frameInfo[regionWId][regionHId].offsetH));
+					normalizer->frameInfo[regionWId][regionHId].h = regionH - (regionH - (avFrame.height - normalizer->frameInfo[regionWId][regionHId].offsetH));
 			
 				int
-				regionW = frameInfo[regionWId][regionHId].w,
-				offsetW = frameInfo[regionWId][regionHId].offsetW,
-				regionH = frameInfo[regionWId][regionHId].h,
-				offsetH = frameInfo[regionWId][regionHId].offsetH;
+				regionW = normalizer->frameInfo[regionWId][regionHId].w,
+				offsetW = normalizer->frameInfo[regionWId][regionHId].offsetW,
+				regionH = normalizer->frameInfo[regionWId][regionHId].h,
+				offsetH = normalizer->frameInfo[regionWId][regionHId].offsetH;
 			}
 		}
 	}
@@ -144,28 +158,28 @@ static void Normalizer_processFrame(Frame *vp){
 	int totalFrameLuma = 0;
 	for (int regionWId = 0; regionWId < REGIONS_W; regionWId++){
 		for (int regionHId = 0; regionHId < REGIONS_H; regionHId++){
-			change_lumaModifyer(&frameInfo[regionWId][regionHId], AVEARGE_REGION_LUMA_MIN, MAX_LUMA_MODIFYER,REGION_LUMA_HISTORY);
-			totalFrameLuma += frameInfo[regionWId][regionHId].prevFrameAverageLuma;
+			change_lumaModifyer(&normalizer->frameInfo[regionWId][regionHId], AVEARGE_REGION_LUMA_MIN, MAX_LUMA_MODIFYER,REGION_LUMA_HISTORY);
+			totalFrameLuma += normalizer->frameInfo[regionWId][regionHId].prevFrameAverageLuma;
 		}
 	}
-	change_lumaModifyer(&totalFrameInfo, AVEARGE_FRAME_LUMA_MIN, MAX_LUMA, FRAME_LUMA_HISTORY);
-	int needModifyLuma = totalFrameInfo.lumaModifyer > 0;
+	change_lumaModifyer(&normalizer->totalFrameInfo, AVEARGE_FRAME_LUMA_MIN, MAX_LUMA, FRAME_LUMA_HISTORY);
+	int needModifyLuma = normalizer->totalFrameInfo.lumaModifyer > 0;
 
 	for (int regionWId = 0; regionWId < REGIONS_W; regionWId++){
 		for (int regionHId = 0; regionHId < REGIONS_H; regionHId++){
 			int 
 			totalLuma = 0,
-			regionW = frameInfo[regionWId][regionHId].w,
-			regionH = frameInfo[regionWId][regionHId].h,
-			offsetW = frameInfo[regionWId][regionHId].offsetW,
-			offsetH = frameInfo[regionWId][regionHId].offsetH;
+			regionW = normalizer->frameInfo[regionWId][regionHId].w,
+			regionH = normalizer->frameInfo[regionWId][regionHId].h,
+			offsetW = normalizer->frameInfo[regionWId][regionHId].offsetW,
+			offsetH = normalizer->frameInfo[regionWId][regionHId].offsetH;
 
 			if (needModifyLuma){//modify luma and calculate current total luma
 				struct SurroundingLuma surroundingLuma = {
-					frameInfo[clamp(regionWId+1,0,REGIONS_W-1)][clamp(regionHId+1,0,REGIONS_H-1)].lumaModifyer,
-					frameInfo[regionWId][clamp(regionHId+1,0,REGIONS_H-1)].lumaModifyer,
-					frameInfo[clamp(regionWId+1,0,REGIONS_W-1)][regionHId].lumaModifyer,
-					frameInfo[regionWId][regionHId].lumaModifyer
+					normalizer->frameInfo[clamp(regionWId+1,0,REGIONS_W-1)][clamp(regionHId+1,0,REGIONS_H-1)].lumaModifyer,
+					normalizer->frameInfo[regionWId][clamp(regionHId+1,0,REGIONS_H-1)].lumaModifyer,
+					normalizer->frameInfo[clamp(regionWId+1,0,REGIONS_W-1)][regionHId].lumaModifyer,
+					normalizer->frameInfo[regionWId][regionHId].lumaModifyer
 				};
 
 				for (int frameW = 0; frameW < regionW; frameW++){
@@ -173,6 +187,7 @@ static void Normalizer_processFrame(Frame *vp){
 						int pixel = (offsetW + frameW) + ((offsetH + frameH) * alignedLinesize);
 						totalLuma += avFrame.data[NORMALIZE_CHANNEL_ID][pixel];
 						avFrame.data[NORMALIZE_CHANNEL_ID][pixel] = get_new_luma(
+							normalizer->totalFrameInfo,
 							surroundingLuma,
 							frameW/(float)regionW,
 							frameH/(float)regionH,
@@ -188,11 +203,11 @@ static void Normalizer_processFrame(Frame *vp){
 					}
 				}
 			}
-			frameInfo[regionWId][regionHId].prevFrameAverageLuma = totalLuma/(regionW * regionH);
+			normalizer->frameInfo[regionWId][regionHId].prevFrameAverageLuma = totalLuma/(regionW * regionH);
 		}
 	}
 
-	totalFrameInfo.prevFrameAverageLuma = totalFrameLuma/(REGIONS_W*REGIONS_H);
+	normalizer->totalFrameInfo.prevFrameAverageLuma = totalFrameLuma/(REGIONS_W*REGIONS_H);
 
 	return;
 }
