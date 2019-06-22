@@ -4,7 +4,12 @@
 #include "AudioCompress/compress.h"
 #include "osd/osd.h"
 #include "video_normalizer/normalize.h"
-#include "bitrate_bar/bitrate_bar.c" //TODO: create and use headers
+#include "bitrate_bar/bitrate_bar.h"
+
+
+	// master_clock = get_master_clock(video_state),
+	// video_state->ic->duration
+
 
 // #define LOG_VIDEO_FRAME_CONTENT
 // #define LOG_VIDEO_FRAME
@@ -104,6 +109,7 @@ static void copyFrameData(AVFrame *avFrame){
 struct Compressor *compressor;
 struct Osd *osd;
 struct Normalizer *normalizer;
+struct BitRateBar *bitRateBar;
 
 //public
 static void ffpatched_init(){
@@ -115,14 +121,13 @@ static int ffpatched_handleRead(AVStream *st,AVFormatContext *ic,AVPacket *pkt,i
 	DURATION_IS_KNOWN = st->duration > 0.1 || st->nb_index_entries > 0;
 	if (DURATION_IS_KNOWN){
 		osd = OSD_new(ic,BITBAR_HEIGHT + OSD_INSET,OSD_INSET);
-		int ret = BitRateBar_generate(st,ic,pkt,st_index,BITBAR_HEIGHT);
-		return ret;
+		bitRateBar = BitRateBar_new(st,ic,pkt,st_index,BITBAR_HEIGHT);
 	} else {
 		return 0;
 	}
 }
 
-static void ffpatched_processVideoFrame(Frame *frame,VideoState *video_state){
+static void ffpatched_processVideoFrame(Frame *frame, double master_clock, double audio_clock, int64_t ic_duration){
 	if (IS_VIDEO_NORMALIZER_ENABLED || (IS_BITRATE_BAR_ENABLED && DURATION_IS_KNOWN))
 		copyFrameData(frame->frame);
 	#ifdef LOG_VIDEO_FRAME_CONTENT
@@ -134,8 +139,8 @@ static void ffpatched_processVideoFrame(Frame *frame,VideoState *video_state){
 	if (IS_VIDEO_NORMALIZER_ENABLED)
 		Normalizer_processFrame(normalizer,frame->frame);
 	if (IS_BITRATE_BAR_ENABLED && DURATION_IS_KNOWN){
-		BitRateBar_insert(frame,video_state);
-		OSD_processFrame(osd, video_state->audio_clock, frame->frame);
+		BitRateBar_processFrame(bitRateBar,frame->frame, master_clock, ic_duration);
+		OSD_processFrame(osd, master_clock, frame->frame); //video_state->audio_clock,
 	}
 }
 static void ffpatched_restoreLastVideoFrame(AVFrame *frame){
@@ -186,4 +191,5 @@ static void ffpatched_handleExit(){
 	Compressor_delete(compressor);
 	Normalizer_delete(normalizer);
 	OSD_delete(osd);
+	BitRateBar_delete(bitRateBar);
 }
