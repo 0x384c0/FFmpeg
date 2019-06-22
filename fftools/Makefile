@@ -1,5 +1,5 @@
 CC=clang
-C_FILES=ffplay.c cmdutils.c patch/AudioCompress/*.c patch/Osd/*.c patch/video_normalizer/*.c patch/bitrate_bar/*.c
+C_FILES=ffplay.c cmdutils.c patch/*.c patch/AudioCompress/*.c patch/Osd/*.c patch/video_normalizer/*.c patch/bitrate_bar/*.c
 OUT_FILE=ffpatched
 CONFIG_PARAMS=--enable-gpl --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter # --enable-libx264
 FFMPEG_LIBS=-lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale
