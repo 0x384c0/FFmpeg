@@ -181,6 +181,7 @@ struct BitRateBar *BitRateBar_new(AVStream *av_stream,AVFormatContext *ic,AVPack
 }
 
 void BitRateBar_delete(struct BitRateBar *bitRateBar){
+	if (bitRateBar->bitrate_bar_image) free(bitRateBar->bitrate_bar_image);
 	free(bitRateBar);
 }
 
