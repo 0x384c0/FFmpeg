@@ -1,3 +1,7 @@
+### Download builds
+* [Win 64](https://github.com/0x384c0/FFmpeg/releases/download/4.1.3/ffpatched_win64.zip)
+
+### Build manually
 Clone
 * `git clone https://github.com/0x384c0/FFmpeg --depth 1`
 
@@ -20,11 +24,11 @@ Build win64
 * `make win_64_config`
 * `make win_64_build`
 
-Hotkeys
+### Hotkeys
 * b - toggle bitrate bar and OSD
 * n - toggle audio compressor
 * h - toggle video normalizer
 
-Screenshots
-![video_normalizer](screenshots/screenshot_video_normalizer.jpg?raw=true "video_normalizer")
+### Screenshots
 ![bitrate_bar](screenshots/screenshot_bitrate_bar.jpg?raw=true "bitrate_bar")
+![video_normalizer](screenshots/screenshot_video_normalizer.jpg?raw=true "video_normalizer")
