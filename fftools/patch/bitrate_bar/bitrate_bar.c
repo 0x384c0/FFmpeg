@@ -1,8 +1,7 @@
+#include "bitrate_bar.h"
+
 #include <stdio.h>
 #include <string.h>
-
-#include "libavformat/avformat.h"
-#include "libavcodec/avcodec.h"
 
 #if !defined(ARRAY_SIZE)
     #define ARRAY_SIZE(x) (sizeof((x)) / sizeof((x)[0]))
@@ -11,15 +10,15 @@
 #define BITBAR_DATA_SIZE 2560
 #define BAR_POINTER_WIDTH 6 //6 for retina, 3 for non retina
 
-
-int bitrate_bar_data[BITBAR_DATA_SIZE];
-
-uint8_t *bitrate_bar_image=NULL;
-int 
-aligned_linesize = 0,
-frame_width = 0,
-barHeight = 0,
-barPointerHeight = 0;
+struct BitRateBar{
+	uint8_t *bitrate_bar_image;
+	int bitrate_bar_data[BITBAR_DATA_SIZE];
+	int 
+	aligned_linesize,
+	frame_width,
+	barHeight,
+	barPointerHeight;
+};
 
 
 static const char* get_str_err(const int err) {
@@ -40,62 +39,60 @@ static void print_array_int(int arr[],int size){
 		printf("%d, ",arr[i]);
 	}
 }
-static void generate_bar_image(Frame *frame){
-	if(aligned_linesize != frame->frame->linesize[0]){
+static void generate_bar_image(struct BitRateBar *bitRateBar, AVFrame *frame){
+	if(bitRateBar->aligned_linesize != frame->linesize[0]){
 		int q,i,w;
 
-		aligned_linesize = frame->frame->linesize[0];
-		frame_width = frame->width;
+		bitRateBar->aligned_linesize = frame->linesize[0];
+		bitRateBar->frame_width = frame->width;
 
-		if (!bitrate_bar_image)
-			bitrate_bar_image = malloc(aligned_linesize * barHeight);
+		if (!bitRateBar->bitrate_bar_image)
+			bitRateBar->bitrate_bar_image = malloc(bitRateBar->aligned_linesize * bitRateBar->barHeight);
 
 		int max = 0;
 
 		for(q=0;q<BITBAR_DATA_SIZE-3;q++){
 			max=0;
 			for(w=0;w<3;w++){
-				max+=bitrate_bar_data[q+w];
+				max+=bitRateBar->bitrate_bar_data[q+w];
 			}
-			bitrate_bar_data[q]=max/3;
+			bitRateBar->bitrate_bar_data[q]=max/3;
 		}
 
 		max=0;
 		for(q = 0; q < BITBAR_DATA_SIZE; q++){
-			if(bitrate_bar_data[q] > max){ max = bitrate_bar_data[q];}
+			if(bitRateBar->bitrate_bar_data[q] > max){ max = bitRateBar->bitrate_bar_data[q];}
 		}
 
 		for(q = 0; q < BITBAR_DATA_SIZE; q++){
-			i = q * frame_width / BITBAR_DATA_SIZE;
-			for(w=0;w<barHeight;w++){
+			i = q * bitRateBar->frame_width / BITBAR_DATA_SIZE;
+			for(w=0;w<bitRateBar->barHeight;w++){
 				if (max){
-					bitrate_bar_image[i + w * aligned_linesize] = bitrate_bar_data[q] * 255 / max;
+					bitRateBar->bitrate_bar_image[i + w * bitRateBar->aligned_linesize] = bitRateBar->bitrate_bar_data[q] * 255 / max;
 				}
 			}
 		}
 	}
 }
-static void insert_bar(Frame *frame){
-	if(bitrate_bar_image){
-		memcpy(&frame->frame->data[0][0],bitrate_bar_image,	aligned_linesize * barHeight);//copy bitrate data to 1st shannel
-		// memset(&frame->frame->data[1][0],255/2,				aligned_linesize*barHeight/4);//fill 2nd shannel
-		// memset(&frame->frame->data[2][0],255/2,				aligned_linesize*barHeight/4);//fill 3rd shannel
+static void insert_bar(struct BitRateBar *bitRateBar, AVFrame *frame){
+	if(bitRateBar->bitrate_bar_image){
+		memcpy(&frame->data[0][0],bitRateBar->bitrate_bar_image,	bitRateBar->aligned_linesize * bitRateBar->barHeight);//copy bitrate data to 1st shannel
+		// memset(&frame->frame->data[1][0],255/2,				bitRateBar->aligned_linesize*bitRateBar->barHeight/4);//fill 2nd shannel
+		// memset(&frame->frame->data[2][0],255/2,				bitRateBar->aligned_linesize*bitRateBar->barHeight/4);//fill 3rd shannel
 	}
 }
-static void insert_pointer_over_bar(Frame *frame,VideoState *video_state){
-	double 
-	master_clock = get_master_clock(video_state),
-	duration = video_state->ic->duration / (double) 1000000LL;
+static void insert_pointer_over_bar(struct BitRateBar *bitRateBar, AVFrame *frame, double master_clock, int64_t ic_duration){
+	double duration = ic_duration / (double) 1000000LL;
 
 	if (isnan(master_clock)) { return; }
 
 	int
-	position = (double) frame_width * (master_clock / duration) - BAR_POINTER_WIDTH/2,
-	dataSize = frame->frame->width * frame->frame->height;
+	position = (double) bitRateBar->frame_width * ((double) master_clock / duration) - BAR_POINTER_WIDTH/2,
+	dataSize = frame->width * frame->height;
 
-	for(int height=0;height<barPointerHeight;height++){
+	for(int height=0;height<bitRateBar->barPointerHeight;height++){
 		for(int width=0;width<BAR_POINTER_WIDTH;width++){
-			if ((position + width) >= frame_width || position + width < 0){
+			if ((position + width) >= bitRateBar->frame_width || position + width < 0){
 				continue; // bar out of frame
 			}
 
@@ -103,29 +100,28 @@ static void insert_pointer_over_bar(Frame *frame,VideoState *video_state){
 			if (width >= ((double) BAR_POINTER_WIDTH)/3 && width < ((double)BAR_POINTER_WIDTH) * 2.0 / 3.0 ){
 				color = 0;
 			}
-			int pointerPixel = position + width + height * (aligned_linesize);
+			int pointerPixel = position + width + height * (bitRateBar->aligned_linesize);
 			if (pointerPixel > 0 && pointerPixel < dataSize)
-				frame->frame->data[0][pointerPixel] = color;//draw vertical line
+				frame->data[0][pointerPixel] = color;//draw vertical line
 		}
 	}
 }
 
 
 //public
-static void BitRateBar_insert(Frame *frame,VideoState *video_state){
-	generate_bar_image(frame);
-	insert_bar(frame);
-	insert_pointer_over_bar(frame,video_state);
-}
 
-static int BitRateBar_generate(AVStream *av_stream,AVFormatContext *ic,AVPacket *pkt,int st_index[],int bitbarHeight){
-	barHeight = bitbarHeight;
-	barPointerHeight = barHeight * 1.5;
+struct BitRateBar *BitRateBar_new(AVStream *av_stream,AVFormatContext *ic,AVPacket *pkt,int st_index[],int bitbarHeight){
+	struct BitRateBar *bitRateBar = calloc(1,sizeof(struct BitRateBar));
+	bitRateBar->bitrate_bar_image = NULL;
+
+
+	bitRateBar->barHeight = bitbarHeight;
+	bitRateBar->barPointerHeight = bitRateBar->barHeight * 1.5;
 
 	// vsrat bitrate index builder
 	int ret;
 	int fuck_id=0;
-	memset(bitrate_bar_data,0,BITBAR_DATA_SIZE * sizeof(int));
+	memset(bitRateBar->bitrate_bar_data,0,BITBAR_DATA_SIZE * sizeof(int));
 
 	fuck_id=st_index[AVMEDIA_TYPE_VIDEO];
 
@@ -140,7 +136,7 @@ static int BitRateBar_generate(AVStream *av_stream,AVFormatContext *ic,AVPacket 
 
 			int bar_id = (av_rescale_q(av_stream->index_entries[q].timestamp, av_stream->time_base, AV_TIME_BASE_Q) - ic->start_time) * BITBAR_DATA_SIZE / ic->duration;
 
-			bitrate_bar_data[bar_id] += av_stream->index_entries[q].size == 0 ? 
+			bitRateBar->bitrate_bar_data[bar_id] += av_stream->index_entries[q].size == 0 ? 
 											av_stream->index_entries[q].pos-prev :
 											av_stream->index_entries[q].size;
 			prev = av_stream->index_entries[q].pos;
@@ -173,14 +169,23 @@ static int BitRateBar_generate(AVStream *av_stream,AVFormatContext *ic,AVPacket 
 				(int)(av_rescale_q(fuck_1, av_stream->time_base, AV_TIME_BASE_Q)/1000000LL));
 				
 				int bar_id = (av_rescale_q(fuck_1, av_stream->time_base, AV_TIME_BASE_Q)-ic->start_time)*BITBAR_DATA_SIZE/ic->duration;
-				bitrate_bar_data[bar_id]+=pkt->size;
+				bitRateBar->bitrate_bar_data[bar_id]+=pkt->size;
 			}
 			av_free_packet(pkt);
 		}
 
 		ret = avformat_seek_file(ic, -1, INT64_MIN, 0, INT64_MAX, 0);
-
 	}
 
-	return ret;
+	return bitRateBar;
+}
+
+void BitRateBar_delete(struct BitRateBar *bitRateBar){
+	free(bitRateBar);
+}
+
+void BitRateBar_processFrame(struct BitRateBar *bitRateBar, AVFrame *frame, double master_clock, int64_t ic_duration){
+	generate_bar_image(bitRateBar,frame);
+	insert_bar(bitRateBar,frame);
+	insert_pointer_over_bar(bitRateBar,frame,master_clock,ic_duration);
 }
