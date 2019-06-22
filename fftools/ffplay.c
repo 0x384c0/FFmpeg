@@ -47,6 +47,8 @@
 #include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
 
+#include "patch/ffpatched.h"
+
 #if CONFIG_AVFILTER
 # include "libavfilter/avfilter.h"
 # include "libavfilter/buffersink.h"
@@ -305,10 +307,6 @@ typedef struct VideoState {
 
     SDL_cond *continue_read_thread;
 } VideoState;
-
-//ffpatched defenitions
-static double get_master_clock(VideoState *is);
-#include "patch/ffpatched.c" //TODO: create and use headers
 
 /* options specified by the user */
 static AVInputFormat *file_iformat;
@@ -1301,7 +1299,7 @@ static void stream_close(VideoState *is)
 
 static void do_exit(VideoState *is)
 {
-    ffpatched_handleExit();
+    FFpatched_deinit();
     if (is) {
         stream_close(is);
     }
@@ -1761,7 +1759,7 @@ static int queue_picture(VideoState *is, AVFrame *src_frame, double pts, double 
     set_default_window_size(vp->width, vp->height, vp->sar);
 
     av_frame_move_ref(vp->frame, src_frame);
-    ffpatched_processVideoFrame(vp, get_master_clock(is), is->audio_clock, is->ic->duration);
+    FFpatched_processVideoFrame(vp->frame, get_master_clock(is), is->audio_clock, is->ic->duration);
     frame_queue_push(&is->pictq);
     return 0;
 }
@@ -2470,7 +2468,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
         len1 = is->audio_buf_size - is->audio_buf_index;
         if (len1 > len)
             len1 = len;
-        ffpatched_processAudioFrame(is,len1);
+        FFpatched_processAudioFrame(is->paused,is->muted, is->audio_buf, is->audio_buf_index, len1);
         if (!is->muted && is->audio_buf && is->audio_volume == SDL_MIX_MAXVOLUME)
             memcpy(stream, (uint8_t *)is->audio_buf + is->audio_buf_index, len1);
         else {
@@ -2895,7 +2893,7 @@ static int read_thread(void *arg)
         AVRational sar = av_guess_sample_aspect_ratio(ic, st, NULL);
         if (codecpar->width)
             set_default_window_size(codecpar->width, codecpar->height, sar);
-        ret = ffpatched_handleRead(st,ic,pkt,st_index);
+        ret = FFpatched_handleRead(st,ic,pkt,st_index);
     }
 
     /* open the streams */
@@ -3460,7 +3458,7 @@ static void event_loop(VideoState *cur_stream)
             do_exit(cur_stream);
             break;
         default:
-            ffpatched_handleSDLKeyEvent(event.key.keysym.sym);
+            FFpatched_handleSDLKeyEvent(event.key.keysym.sym);
             break;
         }
     }
@@ -3681,7 +3679,7 @@ int main(int argc, char **argv)
 
     av_log_set_flags(AV_LOG_SKIP_REPEATED);
     parse_loglevel(argc, argv, options);
-    ffpatched_init();
+    FFpatched_init();
 
     /* register all codecs, demux and protocols */
 #if CONFIG_AVDEVICE
