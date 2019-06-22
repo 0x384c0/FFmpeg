@@ -22,7 +22,7 @@ struct Osd{
 };
 
 //private
-void font_init(struct Osd* osd){
+static void font_init(struct Osd* osd){
     int q;
     int n=0;
     int is_char=0;
@@ -44,7 +44,7 @@ void font_init(struct Osd* osd){
     }
 }
 
-char *vsrat_get_time(struct Osd *osd, double audio_clock,AVFrame *vp){
+static char *vsrat_get_time(struct Osd *osd, double audio_clock,AVFrame *vp){
     static char tmp[100];
     int64_t ts;
     int ns, hh, mm, ss;
@@ -64,7 +64,7 @@ char *vsrat_get_time(struct Osd *osd, double audio_clock,AVFrame *vp){
     return(tmp);
 }
 
-void podpisat(struct Osd *osd, AVFrame *avFrame, char *text, int posY, int posXRightInset){
+static void podpisat(struct Osd *osd, AVFrame *avFrame, char *text, int posY, int posXRightInset){
     char *chars="0123456789:./";
 
     int q;

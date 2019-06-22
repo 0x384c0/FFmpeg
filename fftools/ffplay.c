@@ -1776,7 +1776,7 @@ static int queue_picture(VideoState *is, AVFrame *src_frame, double pts, double 
     set_default_window_size(vp->width, vp->height, vp->sar);
 
     av_frame_move_ref(vp->frame, src_frame);
-    ffpatched_processVideoFrame(vp,is);
+    ffpatched_processVideoFrame(vp, get_master_clock(is), is->audio_clock, is->ic->duration);
     frame_queue_push(&is->pictq);
     return 0;
 }

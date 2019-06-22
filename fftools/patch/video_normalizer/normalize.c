@@ -5,8 +5,8 @@
 
 #define INTERPOLATE
 
-#define REGIONS_W 16
-#define REGIONS_H 9
+#define REGIONS_W 5
+#define REGIONS_H 3
 
 #define MAX_LUMA 255 // int8 value
 #define MAX_LUMA_MODIFYER 255 * 0.6 // int8 value
@@ -39,7 +39,7 @@ struct Normalizer{
 };
 
 
-int clamp(int x,int minVal,int maxVal){
+static int clamp(int x,int minVal,int maxVal){
 	if (x < minVal)
 		return minVal;
 	if (x > maxVal)
@@ -48,21 +48,21 @@ int clamp(int x,int minVal,int maxVal){
 }
 
 //interpolate
-int interpolate_linear(int a,int b,int c,int d,float x,float y){//f(0,0) f(1,0) f(0,1) f(1,1)
+static int interpolate_linear(int a,int b,int c,int d,float x,float y){//f(0,0) f(1,0) f(0,1) f(1,1)
 	return (a-b-c+d)*x*y+(b-a)*x+(c-a)*y+a;
 }
 
 //range compression
-int compress(int x,int min){
+static int compress(int x,int min){
 	return x - x * min/MAX_LUMA + min;
 }
 #define INTERSECT_X 81 //x of intersection between compress and gain functions
-int gain(int x,int min){
+static int gain(int x,int min){
 	return ((float)(x*min))/120.0 + x;
 }
 
 //smooth luma adjusting
-void change_lumaModifyer(struct FrameRegionInfo *frameRegionInfo, int activationTreshold, int maxValue, int historyLen){
+static void change_lumaModifyer(struct FrameRegionInfo *frameRegionInfo, int activationTreshold, int maxValue, int historyLen){
 	int new_lumaModifyer = 0;
 	if (frameRegionInfo->prevFrameAverageLuma < activationTreshold)
 		new_lumaModifyer = frameRegionInfo->lumaModifyer + maxValue / historyLen;
@@ -72,7 +72,7 @@ void change_lumaModifyer(struct FrameRegionInfo *frameRegionInfo, int activation
 }
 
 //adjust luma (0-255) for single pixel
-int get_new_luma(struct FrameRegionInfo totalFrameInfo, struct SurroundingLuma surroundingLuma, float x, float y, int current_luma){
+static int get_new_luma(struct FrameRegionInfo totalFrameInfo, struct SurroundingLuma surroundingLuma, float x, float y, int current_luma){
 	//get luma modifyer for pixel
 	#ifdef INTERPOLATE
 		int lumaModifyer = interpolate_linear(
