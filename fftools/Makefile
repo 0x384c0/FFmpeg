@@ -1,8 +1,9 @@
 SRC_PATH=../
 CC=clang
+ARCH=arm64
 C_FILES=ffplay.c cmdutils.c patch/*.c patch/AudioCompress/*.c patch/Osd/*.c patch/video_normalizer/*.c patch/bitrate_bar/*.c
 OUT_FILE=ffpatched
-CONFIG_PARAMS=--enable-gpl --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter # --enable-libx264
+CONFIG_PARAMS=--enable-gpl --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter --arch=${ARCH} # --enable-libx264
 FFMPEG_LIBS=-lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale
 TEST_STREAM="http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8"
 
@@ -32,10 +33,10 @@ config:
 	cd $(SRC_PATH) && ./configure --cc=$(CC) $(CONFIG_PARAMS)
 
 build:
-	$(CC) -w -O3 -o $(OUT_FILE) $(C_FILES) -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ $(FFMPEG_LIBS) -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs`
+	$(CC) -w -O3 -arch=${ARCH} -o $(OUT_FILE) $(C_FILES) -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ $(FFMPEG_LIBS) -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs`
 
 build_and_debug:
-	$(CC) -g -w -o $(OUT_FILE) $(C_FILES) -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ $(FFMPEG_LIBS) -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs` && \
+	$(CC) -g -w  -arch=${ARCH} -o $(OUT_FILE) $(C_FILES) -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ $(FFMPEG_LIBS) -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs` && \
 	lldb -o run ./$(OUT_FILE) $(TEST_STREAM)
 	lldb ./$(OUT_FILE)
 
