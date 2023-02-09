@@ -1,31 +1,46 @@
+SRC_PATH=../
 CC=clang
 C_FILES=ffplay.c cmdutils.c patch/*.c patch/AudioCompress/*.c patch/Osd/*.c patch/video_normalizer/*.c patch/bitrate_bar/*.c
 OUT_FILE=ffpatched
 CONFIG_PARAMS=--enable-gpl --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter # --enable-libx264
 FFMPEG_LIBS=-lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale
+TEST_STREAM="http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8"
 
 .ONESHELL:
 
 #unix  compile scripts
 all:
+	$(MAKE) libavutil/ffversion.h
 	$(MAKE) clean
 	$(MAKE) config
 	$(MAKE) build
 	$(MAKE) test
 
+# create version, copied from ../MakeFile
+VERSION_SH  = $(SRC_PATH)/ffbuild/version.sh
+GIT_LOG     = $(SRC_PATH)/.git/logs/HEAD
+
+.version: $(wildcard $(GIT_LOG)) $(VERSION_SH) $(SRC_PATH)ffbuild/config.mak
+.version: M=@
+
+libavutil/ffversion.h .version:
+	$(M)$(VERSION_SH) $(SRC_PATH) $(SRC_PATH)libavutil/ffversion.h $(EXTRA_VERSION)
+	$(Q)touch .version
+
+# make
 config:
-	cd ../ && ./configure --cc=$(CC) $(CONFIG_PARAMS)
+	cd $(SRC_PATH) && ./configure --cc=$(CC) $(CONFIG_PARAMS)
 
 build:
 	$(CC) -w -O3 -o $(OUT_FILE) $(C_FILES) -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ $(FFMPEG_LIBS) -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs`
 
 build_and_debug:
 	$(CC) -g -w -o $(OUT_FILE) $(C_FILES) -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ $(FFMPEG_LIBS) -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs` && \
-	lldb -o run ./$(OUT_FILE) ~/Movies/bipbopall.mp4
+	lldb -o run ./$(OUT_FILE) $(TEST_STREAM)
 	lldb ./$(OUT_FILE)
 
 test:
-	./$(OUT_FILE) ~/Movies/bipbopall.mp4
+	./$(OUT_FILE) $(TEST_STREAM)
 
 
 clean:
@@ -35,13 +50,13 @@ clean:
 NC=\x1b[0m
 RED=\x1b[31;01m
 
-# win compile scripts
+# make windows
 MIN_GW=x86_64-w64-mingw32
 CROSS_PREFIX=$(MIN_GW)-
 WIN_64_CC=$(CROSS_PREFIX)gcc
-WIN_64_FFMPEG_DIR=../../ffmpeg-4.1.3-win64-dev
-WIN_64_FFMPEG_SHARED_DIR=../../ffmpeg-4.1.3-win64-shared
-WIN_64_SDL_DIR=../../SDL2-2.0.9/$(MIN_GW)
+WIN_64_FFMPEG_DIR=$(SRC_PATH)../ffmpeg-4.1.3-win64-dev
+WIN_64_FFMPEG_SHARED_DIR=$(SRC_PATH)../ffmpeg-4.1.3-win64-shared
+WIN_64_SDL_DIR=$(SRC_PATH)../SDL2-2.0.9/$(MIN_GW)
 WIN_64_OUT_DIR=$(OUT_FILE)_win64
 
 win_64_all:
