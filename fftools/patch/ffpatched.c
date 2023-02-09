@@ -124,7 +124,8 @@ void FFpatched_init(){
     ffpatchedInstance->normalizer = Normalizer_new();
 }
 int FFpatched_handleRead(AVStream *st,AVFormatContext *ic,AVPacket *pkt,int st_index[]){
-    ffpatchedInstance->DURATION_IS_KNOWN = st->duration > 0.1 || st->nb_index_entries > 0;
+    int nb_index_entries = avformat_index_get_entries_count(st);
+    ffpatchedInstance->DURATION_IS_KNOWN = st->duration > 0.1 || nb_index_entries > 0;
     if (ffpatchedInstance->DURATION_IS_KNOWN){
         ffpatchedInstance->osd = OSD_new(ic,BITBAR_HEIGHT + OSD_INSET,OSD_INSET);
         ffpatchedInstance->bitRateBar = BitRateBar_new(st,ic,pkt,st_index,BITBAR_HEIGHT);
