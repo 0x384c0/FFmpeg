@@ -1,0 +1,46 @@
+name: Build Apple Silicon
+ 
+on:
+ workflow_dispatch:
+
+env:
+  HOMEBREW_FFMPEG_VERSION: 5
+  FFMPEG_VERSION: 5.1.2
+ 
+jobs:
+  build_apple_silicon:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: | 
+          brew install SDL2
+          brew install ffmpeg@${{ env.HOMEBREW_FFMPEG_VERSION }}
+
+      - name: Build
+        run: cd fftools && make libavutil/ffversion.h config build
+
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.FFMPEG_VERSION }}
+          release_name: Release ${{ env.FFMPEG_VERSION }}
+          draft: false
+          prerelease: false
+
+      - name: upload darwin artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: fftools/ffpatched
+          asset_name: ffpatched.darwin-amd64
+          asset_content_type: application/octet-stream
