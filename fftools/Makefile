@@ -2,7 +2,7 @@ SRC_PATH=../
 CC=clang
 ARCH=arm64
 C_FILES=ffplay.c cmdutils.c patch/*.c patch/AudioCompress/*.c patch/Osd/*.c patch/video_normalizer/*.c patch/bitrate_bar/*.c
-OUT_FILE=ffpatched
+OUT_FILE=ffpatched # TODO: use subfolder
 CONFIG_PARAMS=--enable-gpl --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter --arch=${ARCH} # --enable-libx264
 FFMPEG_LIBS=-lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale
 TEST_STREAM="http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8"
@@ -52,12 +52,23 @@ NC=\x1b[0m
 RED=\x1b[31;01m
 
 # make windows
+FFMPEG_VERSION=5.1.2
+SDL_VERSION=2.26.3
+
 MIN_GW=x86_64-w64-mingw32
 CROSS_PREFIX=$(MIN_GW)-
 WIN_64_CC=$(CROSS_PREFIX)gcc
-WIN_64_FFMPEG_DIR=$(SRC_PATH)../ffmpeg-4.1.3-win64-dev
-WIN_64_FFMPEG_SHARED_DIR=$(SRC_PATH)../ffmpeg-4.1.3-win64-shared
-WIN_64_SDL_DIR=$(SRC_PATH)../SDL2-2.0.9/$(MIN_GW)
+
+# WIN_64_FFMPEG_DIR=$(SRC_PATH)../ffmpeg-4.1.3-win64-dev
+
+WIN_64_LIBS_BASE=win_64_libs
+WIN_64_LIBS_TMP=$(WIN_64_LIBS_BASE)/tmp
+WIN_64_FFMPEG_SHARED_URL="https://github.com/GyanD/codexffmpeg/releases/download/$(FFMPEG_VERSION)/ffmpeg-$(FFMPEG_VERSION)-full_build-shared.zip"
+WIN_64_FFMPEG_SHARED_DIR=$(WIN_64_LIBS_BASE)/ffmpeg-$(FFMPEG_VERSION)-full_build-shared
+WIN_64_SDL_SHARED_URL="https://www.libsdl.org/release/SDL2-devel-$(SDL_VERSION)-mingw.zip"
+WIN_64_SDL_SHARED_DIR=$(WIN_64_LIBS_BASE)/SDL2-$(SDL_VERSION)
+
+
 WIN_64_OUT_DIR=$(OUT_FILE)_win64
 
 win_64_all:
@@ -67,12 +78,14 @@ win_64_all:
 	$(MAKE) win_64_build
 	$(MAKE) win_64_test
 
-win_64_check_dependencies:
-	printf "\nChecking dependencies...\n" && \
-	if [ ! -x "$$(command -v $(WIN_64_CC))" ]; then echo "$(WIN_64_CC) is reqiured, but it's not installed. Aborting. Dowload and install $(MIN_GW) from https://mingw-w64.org/doku.php/download/mingw-builds and try again."; exit 1; fi && \
-	if [ ! -d $(WIN_64_FFMPEG_DIR) ]; then echo "$(RED)fmpeg libs is missing in $(WIN_64_FFMPEG_DIR) . Dowload it from https://ffmpeg.zeranoe.com/builds/win64/dev/ffmpeg-4.1.3-win64-dev.zip$(NC)"; exit 1; fi && \
-	if [ ! -d $(WIN_64_FFMPEG_SHARED_DIR) ]; then echo "$(RED)ffmpeg dlls is missing in $(WIN_64_FFMPEG_SHARED_DIR) . Dowload it from https://ffmpeg.zeranoe.com/builds/win64/shared/ffmpeg-4.1.3-win64-shared.zip$(NC)"; exit 1; fi && \
-	if [ ! -d $(WIN_64_SDL_DIR) ]; then echo "$(RED)SDL libs is missing in $(WIN_64_SDL_DIR) . Dowload it from https://www.libsdl.org/release/SDL2-devel-2.0.9-mingw.tar.gz$(NC)"; exit 1; fi && \
+win_64_get_dependencies:
+	rm -rf $(WIN_64_LIBS_TMP)
+	mkdir -p $(WIN_64_LIBS_BASE)
+	mkdir -p $(WIN_64_LIBS_TMP)
+	printf "\nChecking dependencies...\n"
+	if [ ! -x "$$(command -v $(WIN_64_CC))" ];	then echo "$(WIN_64_CC) is reqiured, but it's not installed. Aborting. Dowload and install $(MIN_GW) from https://mingw-w64.org/doku.php/download/mingw-builds and try again."; exit 1; fi && \
+	if [ ! -d $(WIN_64_FFMPEG_SHARED_DIR) ];	then wget $(WIN_64_FFMPEG_SHARED_URL) -O $(WIN_64_LIBS_TMP)/ffmpeg.zip;	unzip $(WIN_64_LIBS_TMP)/ffmpeg.zip -d $(WIN_64_LIBS_BASE);	fi && \
+	if [ ! -d $(WIN_64_SDL_SHARED_DIR) ];		then wget $(WIN_64_SDL_SHARED_URL)    -O $(WIN_64_LIBS_TMP)/sdl.zip;	unzip $(WIN_64_LIBS_TMP)/sdl.zip -d $(WIN_64_LIBS_BASE);		fi && \
 	printf "Dependencies are OK\n"
 
 win_64_config:
@@ -81,12 +94,13 @@ win_64_config:
 win_64_build:
 	$(CROSS_PREFIX)objdump  -p $(OUT_FILE).exe | grep 'DLL Name:' | sed -e "s/\t*DLL Name: //g"
 	set -e
-	$(WIN_64_CC) -w -O3 -o $(OUT_FILE) $(C_FILES) -I. -I../ -I$(WIN_64_SDL_DIR)/include/SDL2 -L$(WIN_64_SDL_DIR)/lib  -I$(WIN_64_FFMPEG_DIR)/include -L$(WIN_64_FFMPEG_DIR)/lib -I$(WIN_64_MINGW_DIR)/include -L$(WIN_64_MINGW_DIR)/lib      $(FFMPEG_LIBS) -lmingw32 -lSDL2main -lSDL2
+	# $(WIN_64_CC) -w -O3 -o $(OUT_FILE) $(C_FILES) -I. -I$(SRC_PATH) -I $(WIN_64_SDL_SHARED_DIR)/$(MIN_GW)/include/SDL2 -L $(WIN_64_SDL_SHARED_DIR)/$(MIN_GW)/lib  -I $(WIN_64_FFMPEG_DIR)/include -L $(WIN_64_FFMPEG_DIR)/lib -I $(WIN_64_MINGW_DIR)/include -L $(WIN_64_MINGW_DIR)/lib      $(FFMPEG_LIBS) -lmingw32 -lSDL2main -lSDL2
+	$(WIN_64_CC) -w -O3 -o $(OUT_FILE) $(C_FILES) -I. -I$(SRC_PATH) -I $(WIN_64_SDL_SHARED_DIR)/$(MIN_GW)/include/SDL2 -L $(WIN_64_SDL_SHARED_DIR)/$(MIN_GW)/lib  -I $(WIN_64_FFMPEG_SHARED_DIR)/include -L $(WIN_64_FFMPEG_SHARED_DIR)/lib -I $(WIN_64_MINGW_DIR)/include -L $(WIN_64_MINGW_DIR)/lib      $(FFMPEG_LIBS) -lmingw32 -lSDL2main -lSDL2
 	mkdir -p $(WIN_64_OUT_DIR)
 	mv -f $(OUT_FILE).exe $(WIN_64_OUT_DIR)
 	find $(WIN_64_FFMPEG_SHARED_DIR) -name "*.dll" -exec cp -n {} $(WIN_64_OUT_DIR) \;
-	find $(WIN_64_SDL_DIR) -name "*.dll" -exec cp -n {} $(WIN_64_OUT_DIR) \;
+	find $(WIN_64_SDL_SHARED_DIR) -name "*.dll" -exec cp -n {} $(WIN_64_OUT_DIR) \;
 
 
 win_64_test:
-	$(WIN_64_OUT_DIR)/$(OUT_FILE) -i /d/Videos/test.avi
+	$(WIN_64_OUT_DIR)/$(OUT_FILE) $(TEST_STREAM)
