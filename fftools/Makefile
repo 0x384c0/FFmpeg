@@ -21,11 +21,11 @@ build:
 
 build_and_debug:
 	$(CC) -g -w -o $(OUT_FILE) $(C_FILES) -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ $(FFMPEG_LIBS) -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs` && \
-	lldb -o run ./$(OUT_FILE) ~/Movies/test.mp4
+	lldb -o run ./$(OUT_FILE) ~/Movies/bipbopall.mp4
 	lldb ./$(OUT_FILE)
 
 test:
-	./$(OUT_FILE) ~/Movies/test.mp4
+	./$(OUT_FILE) ~/Movies/bipbopall.mp4
 
 
 clean:

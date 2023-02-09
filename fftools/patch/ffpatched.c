@@ -116,9 +116,9 @@ static void freeBackedFrameData(){
 //public
 void FFpatched_init(){
     ffpatchedInstance = calloc(1,sizeof(struct FFpatched));
-    ffpatchedInstance->IS_VIDEO_NORMALIZER_ENABLED = 1;
-    ffpatchedInstance->IS_AUDIO_COMPRESS_ENABLED = 1;
-    ffpatchedInstance->IS_BITRATE_BAR_ENABLED = 1;
+    ffpatchedInstance->IS_VIDEO_NORMALIZER_ENABLED = 0;
+    ffpatchedInstance->IS_AUDIO_COMPRESS_ENABLED = 0;
+    ffpatchedInstance->IS_BITRATE_BAR_ENABLED = 0;
     av_log(NULL, AV_LOG_WARNING,"Usage: n - audio compressor, h - video normalizer, b - bitrate bar\n");
     ffpatchedInstance->compressor = Compressor_new(0);
     ffpatchedInstance->normalizer = Normalizer_new();
