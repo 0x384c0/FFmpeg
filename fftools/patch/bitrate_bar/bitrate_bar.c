@@ -125,21 +125,22 @@ struct BitRateBar *BitRateBar_new(AVStream *av_stream,AVFormatContext *ic,AVPack
 
     fuck_id=st_index[AVMEDIA_TYPE_VIDEO];
 
-    AVCodecContext *fuck_avctx=av_stream->codec;
     ret = avformat_seek_file(ic, -1, INT64_MIN, 0, INT64_MAX, 0);
 
+    int nb_index_entries = avformat_index_get_entries_count(av_stream);
 
-    if(av_stream->nb_index_entries>0){
+    if(nb_index_entries>0){
         int q;
         int64_t prev=0;
-        for(q=0; q<av_stream->nb_index_entries; q++){
+        for(q=0; q<nb_index_entries; q++){
+            AVIndexEntry* index_entry = avformat_index_get_entry(av_stream,q);
 
-            int bar_id = (av_rescale_q(av_stream->index_entries[q].timestamp, av_stream->time_base, AV_TIME_BASE_Q) - ic->start_time) * BITBAR_DATA_SIZE / ic->duration;
+            int bar_id = (av_rescale_q(index_entry->timestamp, av_stream->time_base, AV_TIME_BASE_Q) - ic->start_time) * BITBAR_DATA_SIZE / ic->duration;
 
-            bitRateBar->bitrate_bar_data[bar_id] += av_stream->index_entries[q].size == 0 ? 
-                                            av_stream->index_entries[q].pos-prev :
-                                            av_stream->index_entries[q].size;
-            prev = av_stream->index_entries[q].pos;
+            bitRateBar->bitrate_bar_data[bar_id] += index_entry->size == 0 ? 
+                                            index_entry->pos-prev :
+                                            index_entry->size;
+            prev = index_entry->pos;
         }
 
     } else {
@@ -171,7 +172,7 @@ struct BitRateBar *BitRateBar_new(AVStream *av_stream,AVFormatContext *ic,AVPack
                 int bar_id = (av_rescale_q(fuck_1, av_stream->time_base, AV_TIME_BASE_Q)-ic->start_time)*BITBAR_DATA_SIZE/ic->duration;
                 bitRateBar->bitrate_bar_data[bar_id]+=pkt->size;
             }
-            av_free_packet(pkt);
+            av_packet_unref(pkt);
         }
 
         ret = avformat_seek_file(ic, -1, INT64_MIN, 0, INT64_MAX, 0);
