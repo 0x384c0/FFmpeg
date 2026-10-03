@@ -51,6 +51,8 @@ jobs:
 
   build-macos-arm64:
     runs-on: macos-latest
+    # optional: a failure here must not block the windows release
+    continue-on-error: true
 
     steps:
       - name: Checkout repository
@@ -77,6 +79,8 @@ jobs:
 
   release:
     needs: [test-windows-x64, build-macos-arm64]
+    # run even if macOS failed; only windows is required
+    if: ${{ !cancelled() && needs.test-windows-x64.result == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -93,3 +97,4 @@ jobs:
           files: |
             ffpatched_win64.zip
             ffpatched_arm64.zip
+          fail_on_unmatched_files: false

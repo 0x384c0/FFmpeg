@@ -22,7 +22,7 @@ struct FFpatched
     IS_BITRATE_BAR_ENABLED,
     DURATION_IS_KNOWN;
     //frame backup
-    intptr_t copiedFrames[COPIED_FRAMES_BUF_SIZE];
+    uint8_t *copiedFrames[COPIED_FRAMES_BUF_SIZE];
     int currentFrameId;
     //utils
     struct Compressor *compressor;
@@ -108,7 +108,7 @@ static void backupFrameData(AVFrame *avFrame){
 }
 static void freeBackedFrameData(){
     for (int i = 0; i < COPIED_FRAMES_BUF_SIZE; i++){
-        intptr_t pointer = ffpatchedInstance->copiedFrames[i];
+        uint8_t *pointer = ffpatchedInstance->copiedFrames[i];
         if (pointer) free(pointer);
     }
 }
@@ -161,7 +161,7 @@ void FFpatched_processAudioFrame(int paused,int muted, uint8_t *audio_buf, int a
 
     // Compressor_reset();
     if (!paused && !muted && audio_buf && ffpatchedInstance->IS_AUDIO_COMPRESS_ENABLED)
-        Compressor_Process_int16(ffpatchedInstance->compressor, stream, len/2);
+        Compressor_Process_int16(ffpatchedInstance->compressor, (int16_t *)stream, len/2);
 }
 void FFpatched_handleSDLKeyEvent(Uint8 sdlKey){
     switch (sdlKey) {
