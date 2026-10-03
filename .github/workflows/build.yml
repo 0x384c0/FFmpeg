@@ -1,53 +1,92 @@
 name: Build and upload
- 
+
 on:
- workflow_dispatch:
+  workflow_dispatch:
 
 env:
-  HOMEBREW_FFMPEG_VERSION: 5
-  FFMPEG_VERSION: 5.1.2
- 
+  # ffpatched is built from master; prebuilt FFmpeg libs must match master's ABI
+  FFMPEG_VERSION: 9.0-master
+
+permissions:
+  contents: write
+
 jobs:
-  build:
-    runs-on: macos-latest
-    
+  build-windows-x64:
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: | 
-          brew install SDL2
-          brew install ffmpeg@${{ env.HOMEBREW_FFMPEG_VERSION }}
-          brew install mingw-w64
-          brew install wget
-
-      - name: Build for Apple Silicon
-        run: cd fftools && make libavutil/ffversion.h config build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 nasm wget unzip zip
 
       - name: Build for Windows x64
         run: cd fftools && make libavutil/ffversion.h win_64_get_dependencies win_64_config win_64_build
 
-      - name: Zip release
-        run: zip -r fftools/ffpatched_win64_arm64.zip fftools/ffpatched_win64 fftools/ffpatched_arm64
+      - name: Zip
+        run: cd fftools && zip -r ffpatched_win64.zip ffpatched_win64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffpatched_win64
+          path: fftools/ffpatched_win64.zip
+
+  test-windows-x64:
+    needs: build-windows-x64
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ffpatched_win64
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          unzip -q ffpatched_win64.zip
+          ./ffpatched_win64/ffpatched.exe -version
+
+  build-macos-arm64:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install sdl2
+          brew install --HEAD ffmpeg
+
+      - name: Build for Apple Silicon
+        run: cd fftools && make libavutil/ffversion.h config build
+
+      - name: Zip
+        run: cd fftools && zip -r ffpatched_arm64.zip ffpatched_arm64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffpatched_arm64
+          path: fftools/ffpatched_arm64.zip
+
+  release:
+    needs: [test-windows-x64, build-macos-arm64]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
 
       - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.FFMPEG_VERSION }}
-          release_name: Release ${{ env.FFMPEG_VERSION }}
-          draft: false
-          prerelease: false
-
-      - name: Upload release artifacts
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: fftools/ffpatched_win64_arm64.zip
-          asset_name: ffpatched_win64_arm64.zip
-          asset_content_type: application/octet-stream
+          tag_name: ${{ env.FFMPEG_VERSION }}.${{ github.run_number }}
+          name: Release ${{ env.FFMPEG_VERSION }}.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          files: |
+            ffpatched_win64.zip
+            ffpatched_arm64.zip
