@@ -58,11 +58,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install sdl2
+          brew install sdl2 pkgconf
           brew install --HEAD ffmpeg
 
       - name: Build for Apple Silicon
         run: cd fftools && make libavutil/ffversion.h config build
+
+      - name: Smoke test
+        run: ./fftools/ffpatched_arm64/ffpatched -version
 
       - name: Zip
         run: cd fftools && zip -r ffpatched_arm64.zip ffpatched_arm64

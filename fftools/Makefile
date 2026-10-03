@@ -6,6 +6,7 @@ OUT_DIR=ffpatched_$(ARCH)
 OUT_FILE=ffpatched
 CONFIG_PARAMS=--enable-gpl --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-avfilter # --enable-libx264
 FFMPEG_LIBS=-lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale
+FFMPEG_PKGS=libavformat libavcodec libavfilter libavdevice libavutil libswresample libswscale
 TEST_STREAM="http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8"
 
 .ONESHELL:
@@ -35,10 +36,10 @@ config:
 	mkdir -p $(OUT_DIR)
 
 build:
-	$(CC) -w -O3 -arch=${ARCH} -o $(OUT_DIR)/$(OUT_FILE) $(C_FILES) -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ $(FFMPEG_LIBS) -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs`
+	$(CC) -w -O3 -arch $(ARCH) -o $(OUT_DIR)/$(OUT_FILE) $(C_FILES) -I. -I.. `pkg-config --libs $(FFMPEG_PKGS)` `sdl2-config --cflags --libs`
 
 build_and_debug:
-	$(CC) -g -w  -arch=${ARCH} -o $(OUT_DIR)/$(OUT_FILE) $(C_FILES) -I. -I.. -I/usr/local/include/ -L/usr/local/lib/ $(FFMPEG_LIBS) -lz -lbz2 -lSDL2  -lmp3lame -lx264 `sdl2-config --cflags --libs` && \
+	$(CC) -g -w  -arch $(ARCH) -o $(OUT_DIR)/$(OUT_FILE) $(C_FILES) -I. -I.. `pkg-config --libs $(FFMPEG_PKGS)` `sdl2-config --cflags --libs` && \
 	lldb -o run ./$(OUT_DIR)/$(OUT_FILE) $(TEST_STREAM)
 	lldb ./$(OUT_DIR)/$(OUT_FILE)
 
