@@ -64,7 +64,7 @@ static void logVideoFrame(AVFrame *avFrame){
             avFrame->height, 
             avFrame->nb_samples, 
             avFrame->format, 
-            avFrame->key_frame, 
+            !!(avFrame->flags & AV_FRAME_FLAG_KEY), 
             avFrame->pts );
     }
     fflush(stdout);
@@ -132,6 +132,7 @@ int FFpatched_handleRead(AVStream *st,AVFormatContext *ic,AVPacket *pkt,int st_i
     } else {
         return 0;
     }
+    return 0;
 }
 
 void FFpatched_processVideoFrame(AVFrame *avFrame, double master_clock, double audio_clock, int64_t ic_duration){
@@ -151,7 +152,7 @@ void FFpatched_processVideoFrame(AVFrame *avFrame, double master_clock, double a
     }
 }
 
-void FFpatched_processAudioFrame(int paused,int muted, uint8_t audio_buf, int audio_buf_index, int len){
+void FFpatched_processAudioFrame(int paused,int muted, uint8_t *audio_buf, int audio_buf_index, int len){
     uint8_t *stream = (uint8_t *)audio_buf + audio_buf_index;
 
     #ifdef LOG_AUDIO_FRAME

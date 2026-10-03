@@ -1,10 +1,10 @@
 SRC_PATH=../
 CC=clang
 ARCH=arm64
-C_FILES=ffplay.c cmdutils.c patch/*.c patch/AudioCompress/*.c patch/Osd/*.c patch/video_normalizer/*.c patch/bitrate_bar/*.c
+C_FILES=ffplay.c ffplay_renderer.c cmdutils.c opt_common.c patch/*.c patch/AudioCompress/*.c patch/osd/*.c patch/video_normalizer/*.c patch/bitrate_bar/*.c
 OUT_DIR=ffpatched_$(ARCH)
 OUT_FILE=ffpatched
-CONFIG_PARAMS=--enable-gpl --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-postproc --disable-avfilter --arch=${ARCH} # --enable-libx264
+CONFIG_PARAMS=--enable-gpl --disable-ffmpeg --disable-ffprobe --disable-avdevice --disable-avcodec --disable-avformat --disable-swresample --disable-swscale --disable-avfilter # --enable-libx264
 FFMPEG_LIBS=-lavformat -lavcodec -lavfilter -lavdevice -lavutil -lswresample -lswscale
 TEST_STREAM="http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8"
 
@@ -31,7 +31,7 @@ libavutil/ffversion.h .version:
 
 # make
 config:
-	cd $(SRC_PATH) && ./configure --cc=$(CC) $(CONFIG_PARAMS)
+	(cd $(SRC_PATH) && ./configure --cc=$(CC) $(CONFIG_PARAMS) --arch=$(ARCH))
 	mkdir -p $(OUT_DIR)
 
 build:
@@ -54,8 +54,9 @@ NC=\x1b[0m
 RED=\x1b[31;01m
 
 # make windows
-FFMPEG_VERSION=5.1.2
-SDL_VERSION=2.26.3
+# prebuilt shared FFmpeg must match the major versions of this source tree (master)
+FFMPEG_BUILD=master-latest
+SDL_VERSION=2.32.10
 
 MIN_GW=x86_64-w64-mingw32
 CROSS_PREFIX=$(MIN_GW)-
@@ -65,9 +66,9 @@ WIN_64_CC=$(CROSS_PREFIX)gcc
 
 WIN_64_LIBS_BASE=win_64_libs
 WIN_64_LIBS_TMP=$(WIN_64_LIBS_BASE)/tmp
-WIN_64_FFMPEG_SHARED_URL="https://github.com/GyanD/codexffmpeg/releases/download/$(FFMPEG_VERSION)/ffmpeg-$(FFMPEG_VERSION)-full_build-shared.zip"
-WIN_64_FFMPEG_SHARED_DIR=$(WIN_64_LIBS_BASE)/ffmpeg-$(FFMPEG_VERSION)-full_build-shared
-WIN_64_SDL_SHARED_URL="https://www.libsdl.org/release/SDL2-devel-$(SDL_VERSION)-mingw.zip"
+WIN_64_FFMPEG_SHARED_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-$(FFMPEG_BUILD)-win64-gpl-shared.zip"
+WIN_64_FFMPEG_SHARED_DIR=$(WIN_64_LIBS_BASE)/ffmpeg-$(FFMPEG_BUILD)-win64-gpl-shared
+WIN_64_SDL_SHARED_URL="https://github.com/libsdl-org/SDL/releases/download/release-$(SDL_VERSION)/SDL2-devel-$(SDL_VERSION)-mingw.zip"
 WIN_64_SDL_SHARED_DIR=$(WIN_64_LIBS_BASE)/SDL2-$(SDL_VERSION)
 
 
@@ -93,7 +94,7 @@ win_64_get_dependencies:
 	printf "Dependencies are OK\n"
 
 win_64_config:
-	cd ../ && ./configure  --arch=x86 --target-os=mingw64 --cross-prefix=$(CROSS_PREFIX) --pkg-config=pkg-config $(CONFIG_PARAMS)
+	(cd $(SRC_PATH) && ./configure  --arch=x86_64 --target-os=mingw64 --cross-prefix=$(CROSS_PREFIX) --pkg-config=pkg-config $(CONFIG_PARAMS))
 	mkdir -p $(WIN_64_OUT_DIR)
 
 win_64_build:
