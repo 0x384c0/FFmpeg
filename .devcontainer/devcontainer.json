@@ -1,0 +1,26 @@
+{
+  "name": "FFmpeg Windows x64 build",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  // Fixed container name instead of an auto-generated one.
+  "runArgs": ["--name", "ffmpeg-dev"],
+  "remoteUser": "vscode",
+  // The repo root (parent of .devcontainer) is bind-mounted from the WSL ext4 filesystem.
+  // Open the folder from WSL (not a Windows drive) so the mount stays native and fast.
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/FFmpeg,type=bind",
+  "workspaceFolder": "/workspaces/FFmpeg",
+  "mounts": [
+    // Claude Code login/settings survive container rebuilds.
+    "source=claude-config,target=/home/vscode/.claude,type=volume",
+    // Reuse WSL SSH keys (read-only).
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly"
+  ],
+  "containerEnv": {
+    // Keep ~/.claude.json inside the persisted dir too.
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
+  // A fresh claude-config volume is root-owned.
+  "postCreateCommand": "sudo chown vscode:vscode /home/vscode/.claude && x86_64-w64-mingw32-gcc --version && nasm -v"
+}

@@ -1,0 +1,58 @@
+{
+  // ffpatched build tasks, mirroring .github/workflows/build.yml.
+  // All run from fftools/; output goes to fftools/ffpatched_<arch>/.
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}/fftools"
+  },
+  "tasks": [
+    {
+      // Cross-compile on Linux (dev container) with mingw; downloads prebuilt FFmpeg + SDL2 DLLs once.
+      "label": "ffpatched: build Windows x64",
+      "type": "shell",
+      "command": "make libavutil/ffversion.h win_64_get_dependencies win_64_config win_64_build",
+      "problemMatcher": { "base": "$gcc", "fileLocation": ["relative", "${workspaceFolder}/fftools"] },
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      // Recompile only; requires a prior full Windows build (configure + deps).
+      "label": "ffpatched: rebuild Windows x64 (compile only)",
+      "type": "shell",
+      "command": "make win_64_build",
+      "problemMatcher": { "base": "$gcc", "fileLocation": ["relative", "${workspaceFolder}/fftools"] },
+      "group": "build"
+    },
+    {
+      // Needs: brew install sdl2 pkgconf && brew install --HEAD ffmpeg
+      "label": "ffpatched: build macOS arm64",
+      "type": "shell",
+      "command": "make libavutil/ffversion.h config build",
+      "problemMatcher": { "base": "$gcc", "fileLocation": ["relative", "${workspaceFolder}/fftools"] },
+      "group": "build"
+    },
+    {
+      // Needs SDL2 dev package and FFmpeg master shared libs visible to pkg-config
+      // (distro FFmpeg is usually an older ABI). Not available in the dev container.
+      "label": "ffpatched: build Linux x64",
+      "type": "shell",
+      "command": "make libavutil/ffversion.h config build CC=gcc ARCH=x86_64",
+      "problemMatcher": { "base": "$gcc", "fileLocation": ["relative", "${workspaceFolder}/fftools"] },
+      "group": "build"
+    },
+    {
+      // Removes build output (fftools/ffpatched_*/) only; keeps downloaded Windows deps.
+      // Not `make clean`: that runs `git clean -fdx` and also deletes any untracked source files.
+      "label": "ffpatched: clean",
+      "type": "shell",
+      "command": "rm -rf ffpatched_*/",
+      "problemMatcher": []
+    },
+    {
+      // Same as clean, plus the downloaded prebuilt FFmpeg + SDL2 (re-fetched on next Windows build).
+      "label": "ffpatched: clean all (incl. Windows deps)",
+      "type": "shell",
+      "command": "rm -rf ffpatched_*/ win_64_libs/",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -62,3 +62,5 @@
 *.dSYM
 *.log
 *.vscode
+!/.vscode/
+!/.devcontainer/
