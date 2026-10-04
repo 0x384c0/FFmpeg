@@ -4443,6 +4443,7 @@ static void event_loop(VideoState *cur_stream)
                     }
                 break;
             default:
+                FFpatched_handleSDLKeyEvent(event.key.keysym.sym);
                 break;
             }
             break;
@@ -4548,7 +4549,6 @@ static void event_loop(VideoState *cur_stream)
             do_exit(cur_stream);
             break;
         default:
-            FFpatched_handleSDLKeyEvent(event.key.keysym.sym);
             break;
         }
     }

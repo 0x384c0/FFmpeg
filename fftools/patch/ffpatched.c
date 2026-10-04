@@ -163,7 +163,7 @@ void FFpatched_processAudioFrame(int paused,int muted, uint8_t *audio_buf, int a
     if (!paused && !muted && audio_buf && ffpatchedInstance->IS_AUDIO_COMPRESS_ENABLED)
         Compressor_Process_int16(ffpatchedInstance->compressor, (int16_t *)stream, len/2);
 }
-void FFpatched_handleSDLKeyEvent(Uint8 sdlKey){
+void FFpatched_handleSDLKeyEvent(SDL_Keycode sdlKey){
     switch (sdlKey) {
         case SDLK_n:
             ffpatchedInstance->IS_AUDIO_COMPRESS_ENABLED = !ffpatchedInstance->IS_AUDIO_COMPRESS_ENABLED;

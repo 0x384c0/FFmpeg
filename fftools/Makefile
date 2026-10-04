@@ -10,6 +10,10 @@ FFMPEG_PKGS=libavformat libavcodec libavfilter libavdevice libavutil libswresamp
 # errors in newer clang/gcc even with -w, keep both builds equally strict
 STRICT_FLAGS=-Werror=int-conversion -Werror=implicit-function-declaration -Werror=incompatible-pointer-types -Werror=implicit-int -Werror=return-type
 TEST_STREAM="http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8"
+# -arch is understood only by Apple clang; on Linux build with e.g. CC=gcc ARCH=x86_64
+ifeq ($(shell uname -s),Darwin)
+ARCH_FLAGS=-arch $(ARCH)
+endif
 
 .ONESHELL:
 
@@ -38,10 +42,10 @@ config:
 	mkdir -p $(OUT_DIR)
 
 build:
-	$(CC) -w $(STRICT_FLAGS) -O3 -arch $(ARCH) -o $(OUT_DIR)/$(OUT_FILE) $(C_FILES) -I. -I.. `pkg-config --libs $(FFMPEG_PKGS)` `sdl2-config --cflags --libs`
+	$(CC) -w $(STRICT_FLAGS) -O3 $(ARCH_FLAGS) -o $(OUT_DIR)/$(OUT_FILE) $(C_FILES) -I. -I.. `pkg-config --libs $(FFMPEG_PKGS)` `sdl2-config --cflags --libs`
 
 build_and_debug:
-	$(CC) -g -w $(STRICT_FLAGS)  -arch $(ARCH) -o $(OUT_DIR)/$(OUT_FILE) $(C_FILES) -I. -I.. `pkg-config --libs $(FFMPEG_PKGS)` `sdl2-config --cflags --libs` && \
+	$(CC) -g -w $(STRICT_FLAGS)  $(ARCH_FLAGS) -o $(OUT_DIR)/$(OUT_FILE) $(C_FILES) -I. -I.. `pkg-config --libs $(FFMPEG_PKGS)` `sdl2-config --cflags --libs` && \
 	lldb -o run ./$(OUT_DIR)/$(OUT_FILE) $(TEST_STREAM)
 	lldb ./$(OUT_DIR)/$(OUT_FILE)
 
@@ -104,7 +108,7 @@ win_64_build:
 	set -e
 	$(WIN_64_CC) -w $(STRICT_FLAGS) -O3 -o $(WIN_64_OUT_DIR)/$(OUT_FILE) $(C_FILES) -I. -I$(SRC_PATH) -I $(WIN_64_SDL_SHARED_DIR)/$(MIN_GW)/include/SDL2 -L $(WIN_64_SDL_SHARED_DIR)/$(MIN_GW)/lib  -I $(WIN_64_FFMPEG_SHARED_DIR)/include -L $(WIN_64_FFMPEG_SHARED_DIR)/lib -I $(WIN_64_MINGW_DIR)/include -L $(WIN_64_MINGW_DIR)/lib      $(FFMPEG_LIBS) -lmingw32 -lSDL2main -lSDL2
 	find $(WIN_64_FFMPEG_SHARED_DIR) -name "*.dll" -exec cp -n {} $(WIN_64_OUT_DIR) \;
-	find $(WIN_64_SDL_SHARED_DIR) -name "*.dll" -exec cp -n {} $(WIN_64_OUT_DIR) \;
+	cp $(WIN_64_SDL_SHARED_DIR)/$(MIN_GW)/bin/*.dll $(WIN_64_OUT_DIR)
 	$(CROSS_PREFIX)objdump  -p $(WIN_64_OUT_DIR)/$(OUT_FILE).exe | grep 'DLL Name:' | sed -e "s/\t*DLL Name: //g"
 
 
